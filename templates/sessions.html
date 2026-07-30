@@ -1,0 +1,128 @@
+{% extends "base.html" %}
+{% block title %}Sessions - {{ course.code }} - IBS Attendance{% endblock %}
+
+{% block content %}
+<div class="container">
+    <div class="page-header d-flex justify-content-between align-items-center">
+        <div>
+            <h4><i class="bi bi-calendar me-2"></i>{{ course.code }} - {{ course.name }}</h4>
+            <p>Lecturer: {{ course.lecturer }} | {{ course.students|length }} students enrolled</p>
+        </div>
+        <div>
+            <a href="{{ url_for('new_session', course_id=course.id) }}" class="btn btn-ibs-accent me-2">
+                <i class="bi bi-plus-lg me-1"></i> New Session
+            </a>
+            <a href="{{ url_for('course_report', course_id=course.id) }}" class="btn btn-outline-light">
+                <i class="bi bi-bar-chart me-1"></i> Report
+            </a>
+        </div>
+    </div>
+
+    <div class="card">
+        <div class="card-body">
+            {% if sessions %}
+            <div class="table-responsive">
+                <table class="table table-hover align-middle">
+                    <thead>
+                        <tr>
+                            <th>#</th>
+                            <th>Date</th>
+                            <th>Topic</th>
+                            <th>Time</th>
+                            <th>Attendance</th>
+                            <th>Actions</th>
+                        </tr>
+                    </thead>
+                    <tbody>
+                        {% for session in sessions %}
+                        {% set records = session.attendance_records %}
+                        {% set present = records|selectattr('status', 'equalto', 'present')|list|length %}
+                        {% set absent = records|selectattr('status', 'equalto', 'absent')|list|length %}
+                        {% set late = records|selectattr('status', 'equalto', 'late')|list|length %}
+                        {% set total = records|length %}
+                        <tr>
+                            <td>{{ loop.index }}</td>
+                            <td><strong>{{ session.date.strftime('%d %b %Y') }}</strong></td>
+                            <td>{{ session.topic or '—' }}</td>
+                            <td>
+                                {% if session.start_time %}
+                                    {{ session.start_time }}{% if session.end_time %} - {{ session.end_time }}{% endif %}
+                                {% else %}
+                                    —
+                                {% endif %}
+                            </td>
+                            <td>
+                                {% if total > 0 %}
+                                <div class="d-flex align-items-center gap-2">
+                                    <span class="badge badge-present">{{ present }} P</span>
+                                    <span class="badge badge-late">{{ late }} L</span>
+                                    <span class="badge badge-absent">{{ absent }} A</span>
+                                    <small class="text-muted ms-1">({{ total }})</small>
+                                </div>
+                                {% else %}
+                                <span class="text-muted">Not taken</span>
+                                {% endif %}
+                            </td>
+                            <td>
+                                <div class="btn-group btn-group-sm">
+                                    {% if total > 0 %}
+                                    <a href="{{ url_for('view_attendance', session_id=session.id) }}" class="btn btn-outline-success" title="View">
+                                        <i class="bi bi-eye"></i>
+                                    </a>
+                                    <a href="{{ url_for('take_attendance', session_id=session.id) }}" class="btn btn-outline-warning" title="Edit">
+                                        <i class="bi bi-pencil"></i>
+                                    </a>
+                                    {% else %}
+                                    <a href="{{ url_for('take_attendance', session_id=session.id) }}" class="btn btn-outline-primary" title="Take Attendance">
+                                        <i class="bi bi-clipboard-check"></i> Take
+                                    </a>
+                                    {% endif %}
+                                    <button class="btn btn-outline-danger" title="Delete"
+                                            data-bs-toggle="modal" data-bs-target="#deleteSessionModal{{ session.id }}">
+                                        <i class="bi bi-trash"></i>
+                                    </button>
+                                </div>
+                            </td>
+                        </tr>
+                        {% endfor %}
+                    </tbody>
+                </table>
+            </div>
+            {% else %}
+            <div class="empty-state">
+                <i class="bi bi-calendar"></i>
+                <h5>No Sessions Yet</h5>
+                <p>Create a new session to start taking attendance for {{ course.name }}.</p>
+                <a href="{{ url_for('new_session', course_id=course.id) }}" class="btn btn-ibs">
+                    <i class="bi bi-plus-lg"></i> New Session
+                </a>
+            </div>
+            {% endif %}
+        </div>
+    </div>
+</div>
+
+<!-- Delete Session Modals -->
+{% for session in sessions %}
+<div class="modal fade" id="deleteSessionModal{{ session.id }}" tabindex="-1">
+    <div class="modal-dialog modal-sm">
+        <div class="modal-content">
+            <div class="modal-header bg-danger">
+                <h5 class="modal-title"><i class="bi bi-exclamation-triangle me-2"></i>Delete Session</h5>
+                <button type="button" class="btn-close btn-close-white" data-bs-dismiss="modal"></button>
+            </div>
+            <div class="modal-body">
+                <p>Delete session from <strong>{{ session.date.strftime('%d %b %Y') }}</strong>?</p>
+                <p class="text-danger mb-0"><small>All attendance records for this session will be deleted.</small></p>
+            </div>
+            <div class="modal-footer">
+                <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Cancel</button>
+                <form action="{{ url_for('delete_session', session_id=session.id) }}" method="POST">
+                    <button type="submit" class="btn btn-danger"><i class="bi bi-trash"></i> Delete</button>
+                </form>
+            </div>
+        </div>
+    </div>
+</div>
+{% endfor %}
+{% endblock %}

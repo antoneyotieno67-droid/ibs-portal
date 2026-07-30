@@ -1,0 +1,135 @@
+{% extends "base.html" %}
+{% block title %}Take Attendance - {{ course.code }} - IBS Attendance{% endblock %}
+
+{% block content %}
+<div class="container">
+    <div class="page-header d-flex justify-content-between align-items-center">
+        <div>
+            <h4><i class="bi bi-clipboard-check me-2"></i>Take Attendance</h4>
+            <p>{{ course.code }} - {{ course.name }} | {{ session.date.strftime('%d %b %Y') }}{% if session.topic %} | {{ session.topic }}{% endif %}</p>
+        </div>
+        <div>
+            <span class="badge bg-light text-dark fs-6 px-3 py-2">
+                <i class="bi bi-people me-1"></i>{{ students|length }} students
+            </span>
+        </div>
+    </div>
+
+    <div class="card">
+        <div class="card-body">
+            <form method="POST" id="attendanceForm">
+                {% if students %}
+                <div class="d-flex justify-content-between align-items-center mb-3">
+                    <div class="btn-group" role="group">
+                        <button type="button" class="btn btn-sm btn-outline-success" onclick="setAll('present')">
+                            <i class="bi bi-check-circle"></i> All Present
+                        </button>
+                        <button type="button" class="btn btn-sm btn-outline-warning" onclick="setAll('late')">
+                            <i class="bi bi-clock"></i> All Late
+                        </button>
+                        <button type="button" class="btn btn-sm btn-outline-danger" onclick="setAll('absent')">
+                            <i class="bi bi-x-circle"></i> All Absent
+                        </button>
+                    </div>
+                    <small class="text-muted">Click a status button to mark each student</small>
+                </div>
+
+                <div class="table-responsive">
+                    <table class="table table-hover align-middle">
+                        <thead>
+                            <tr>
+                                <th style="width: 50px;">#</th>
+                                <th style="width: 130px;">Reg Number</th>
+                                <th>Student Name</th>
+                                <th style="width: 350px;">Status</th>
+                            </tr>
+                        </thead>
+                        <tbody>
+                            {% for student in students %}
+                            <tr>
+                                <td>{{ loop.index }}</td>
+                                <td><span class="badge bg-secondary">{{ student.reg_number }}</span></td>
+                                <td class="fw-bold">{{ student.name }}</td>
+                                <td>
+                                    <div class="btn-group attendance-btn-group" role="group">
+                                        {% set current = attendance_map.get(student.id, 'present') %}
+                                        <button type="button" class="btn btn-outline-success {% if current == 'present' %}active-present{% endif %}"
+                                                onclick="setStatus('{{ student.id }}', 'present', this)">
+                                            <i class="bi bi-check-circle"></i> Present
+                                        </button>
+                                        <button type="button" class="btn btn-outline-warning {% if current == 'late' %}active-late{% endif %}"
+                                                onclick="setStatus('{{ student.id }}', 'late', this)">
+                                            <i class="bi bi-clock"></i> Late
+                                        </button>
+                                        <button type="button" class="btn btn-outline-danger {% if current == 'absent' %}active-absent{% endif %}"
+                                                onclick="setStatus('{{ student.id }}', 'absent', this)">
+                                            <i class="bi bi-x-circle"></i> Absent
+                                        </button>
+                                        <button type="button" class="btn btn-outline-secondary {% if current == 'excused' %}active-excused{% endif %}"
+                                                onclick="setStatus('{{ student.id }}', 'excused', this)">
+                                            <i class="bi bi-question-circle"></i> Excused
+                                        </button>
+                                    </div>
+                                    <input type="hidden" name="status_{{ student.id }}" id="status_{{ student.id }}" value="{{ current }}">
+                                </td>
+                            </tr>
+                            {% endfor %}
+                        </tbody>
+                    </table>
+                </div>
+
+                <div class="d-flex justify-content-between mt-3">
+                    <a href="{{ url_for('course_sessions', course_id=course.id) }}" class="btn btn-secondary">
+                        <i class="bi bi-arrow-left"></i> Back to Sessions
+                    </a>
+                    <button type="submit" class="btn btn-ibs-accent btn-lg">
+                        <i class="bi bi-save me-1"></i> Save Attendance
+                    </button>
+                </div>
+                {% else %}
+                <div class="empty-state">
+                    <i class="bi bi-people"></i>
+                    <h5>No Students Enrolled</h5>
+                    <p>Add students to this course before taking attendance.</p>
+                    <a href="{{ url_for('students') }}" class="btn btn-ibs">
+                        <i class="bi bi-plus-lg"></i> Add Students
+                    </a>
+                </div>
+                {% endif %}
+            </form>
+        </div>
+    </div>
+</div>
+{% endblock %}
+
+{% block scripts %}
+<script>
+    function setStatus(studentId, status, btn) {
+        // Update hidden input
+        document.getElementById('status_' + studentId).value = status;
+
+        // Update button styles
+        const group = btn.closest('.attendance-btn-group');
+        group.querySelectorAll('.btn').forEach(b => {
+            b.className = b.className.replace(/active-\w+/g, '').trim();
+        });
+        btn.classList.add('active-' + status);
+    }
+
+    function setAll(status) {
+        const statusMap = {
+            'present': 'active-present',
+            'late': 'active-late',
+            'absent': 'active-absent',
+            'excused': 'active-excused'
+        };
+        document.querySelectorAll('.attendance-btn-group').forEach(group => {
+            const btn = group.querySelector('.btn-' + status);
+            if (btn) {
+                const studentId = btn.closest('tr').querySelector('input[type="hidden"]').id.split('_')[1];
+                setStatus(studentId, status, btn);
+            }
+        });
+    }
+</script>
+{% endblock %}

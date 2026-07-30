@@ -1,0 +1,174 @@
+{% extends "base.html" %}
+{% block title %}Report - {{ course.code }} - IBS Attendance{% endblock %}
+
+{% block content %}
+<div class="container">
+    <div class="page-header d-flex justify-content-between align-items-center">
+        <div>
+            <h4><i class="bi bi-bar-chart me-2"></i>Attendance Report: {{ course.code }}</h4>
+            <p>{{ course.name }} | Lecturer: {{ course.lecturer }}</p>
+        </div>
+        <div>
+            <a href="{{ url_for('course_sessions', course_id=course.id) }}" class="btn btn-outline-light me-2">
+                <i class="bi bi-calendar"></i> Sessions
+            </a>
+            <a href="{{ url_for('reports') }}" class="btn btn-outline-light">
+                <i class="bi bi-arrow-left"></i> All Reports
+            </a>
+        </div>
+    </div>
+
+    <!-- Summary Stats -->
+    <div class="row g-3 mb-4">
+        <div class="col-md-3">
+            <div class="card text-center">
+                <div class="card-body">
+                    <h3 class="text-primary mb-0">{{ sessions|length }}</h3>
+                    <small class="text-muted">Total Sessions</small>
+                </div>
+            </div>
+        </div>
+        <div class="col-md-3">
+            <div class="card text-center">
+                <div class="card-body">
+                    <h3 class="text-info mb-0">{{ report_data|length }}</h3>
+                    <small class="text-muted">Students</small>
+                </div>
+            </div>
+        </div>
+        <div class="col-md-3">
+            <div class="card text-center">
+                <div class="card-body">
+                    {% set avg = namespace(value=0) %}
+                    {% for r in report_data %}{% set avg.value = avg.value + r.percentage %}{% endfor %}
+                    {% set avg_pct = (avg.value / report_data|length)|round(1) if report_data else 0 %}
+                    <h3 class="{% if avg_pct >= 75 %}text-success{% elif avg_pct >= 50 %}text-warning{% else %}text-danger{% endif %} mb-0">
+                        {{ avg_pct }}%
+                    </h3>
+                    <small class="text-muted">Average Attendance</small>
+                </div>
+            </div>
+        </div>
+        <div class="col-md-3">
+            <div class="card text-center">
+                <div class="card-body">
+                    {% set at_risk = report_data|selectattr('percentage', 'lt', 75)|list|length %}
+                    <h3 class="text-danger mb-0">{{ at_risk }}</h3>
+                    <small class="text-muted">At Risk (&lt;75%)</small>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- Sessions List -->
+    {% if sessions %}
+    <div class="card mb-4">
+        <div class="card-header bg-white fw-bold">
+            <i class="bi bi-calendar me-2"></i>Sessions
+        </div>
+        <div class="card-body">
+            <div class="table-responsive">
+                <table class="table table-sm">
+                    <thead>
+                        <tr>
+                            <th>Date</th>
+                            <th>Topic</th>
+                            <th>Present</th>
+                            <th>Late</th>
+                            <th>Absent</th>
+                            <th>Total</th>
+                        </tr>
+                    </thead>
+                    <tbody>
+                        {% for session in sessions %}
+                        {% set p = session.attendance_records|selectattr('status', 'equalto', 'present')|list|length %}
+                        {% set l = session.attendance_records|selectattr('status', 'equalto', 'late')|list|length %}
+                        {% set a = session.attendance_records|selectattr('status', 'equalto', 'absent')|list|length %}
+                        {% set t = session.attendance_records|length %}
+                        <tr>
+                            <td>{{ session.date.strftime('%d %b %Y') }}</td>
+                            <td>{{ session.topic or '—' }}</td>
+                            <td class="text-success">{{ p }}</td>
+                            <td class="text-warning">{{ l }}</td>
+                            <td class="text-danger">{{ a }}</td>
+                            <td>{{ t }}</td>
+                        </tr>
+                        {% endfor %}
+                    </tbody>
+                </table>
+            </div>
+        </div>
+    </div>
+    {% endif %}
+
+    <!-- Student Report Table -->
+    <div class="card">
+        <div class="card-header bg-white fw-bold d-flex justify-content-between align-items-center">
+            <span><i class="bi bi-people me-2"></i>Student Attendance Summary</span>
+            <span class="badge bg-primary">{{ report_data|length }} students</span>
+        </div>
+        <div class="card-body">
+            {% if report_data %}
+            <div class="table-responsive">
+                <table class="table table-hover align-middle">
+                    <thead>
+                        <tr>
+                            <th>#</th>
+                            <th>Reg Number</th>
+                            <th>Student Name</th>
+                            <th class="text-center">Present</th>
+                            <th class="text-center">Late</th>
+                            <th class="text-center">Absent</th>
+                            <th class="text-center">Excused</th>
+                            <th class="text-center">Total</th>
+                            <th>Attendance %</th>
+                            <th>Status</th>
+                        </tr>
+                    </thead>
+                    <tbody>
+                        {% for data in report_data %}
+                        <tr>
+                            <td>{{ loop.index }}</td>
+                            <td><span class="badge bg-secondary">{{ data.student.reg_number }}</span></td>
+                            <td class="fw-bold">{{ data.student.name }}</td>
+                            <td class="text-center text-success fw-bold">{{ data.present }}</td>
+                            <td class="text-center text-warning fw-bold">{{ data.late }}</td>
+                            <td class="text-center text-danger fw-bold">{{ data.absent }}</td>
+                            <td class="text-center text-secondary">{{ data.excused }}</td>
+                            <td class="text-center">{{ data.total }}</td>
+                            <td>
+                                <div class="d-flex align-items-center gap-2">
+                                    <div class="progress progress-thin flex-grow-1" style="min-width: 80px;">
+                                        <div class="progress-bar {% if data.percentage >= 75 %}bg-success{% elif data.percentage >= 50 %}bg-warning{% else %}bg-danger{% endif %}"
+                                             style="width: {{ data.percentage }}%"></div>
+                                    </div>
+                                    <span class="fw-bold {% if data.percentage >= 75 %}text-success{% elif data.percentage >= 50 %}text-warning{% else %}text-danger{% endif %}">
+                                        {{ data.percentage }}%
+                                    </span>
+                                </div>
+                            </td>
+                            <td>
+                                {% if data.percentage >= 75 %}
+                                <span class="badge bg-success"><i class="bi bi-check-circle"></i> Good</span>
+                                {% elif data.percentage >= 50 %}
+                                <span class="badge bg-warning text-dark"><i class="bi bi-exclamation-triangle"></i> Warning</span>
+                                {% else %}
+                                <span class="badge bg-danger"><i class="bi bi-x-circle"></i> At Risk</span>
+                                {% endif %}
+                            </td>
+                        </tr>
+                        {% endfor %}
+                    </tbody>
+                </table>
+            </div>
+            {% else %}
+            <div class="empty-state">
+                <i class="bi bi-bar-chart"></i>
+                <h5>No Attendance Data</h5>
+                <p>Start taking attendance to see reports.</p>
+            </div>
+            {% endif %}
+        </div>
+    </div>
+</div>
+{% endblock %}

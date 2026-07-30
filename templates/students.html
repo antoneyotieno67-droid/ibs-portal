@@ -1,0 +1,175 @@
+{% extends "base.html" %}
+{% block title %}Students - IBS Attendance{% endblock %}
+
+{% block content %}
+<div class="container">
+    <div class="page-header d-flex justify-content-between align-items-center">
+        <div>
+            <h4><i class="bi bi-people me-2"></i>Student Management</h4>
+            <p>Manage all students enrolled at the Institute of Business Studies</p>
+        </div>
+        <button class="btn btn-ibs-accent" data-bs-toggle="modal" data-bs-target="#addStudentModal">
+            <i class="bi bi-plus-lg me-1"></i> Add Student
+        </button>
+    </div>
+
+    <div class="card">
+        <div class="card-body">
+            {% if students %}
+            <div class="table-responsive">
+                <table class="table table-hover align-middle">
+                    <thead>
+                        <tr>
+                            <th>#</th>
+                            <th>Reg Number</th>
+                            <th>Student Name</th>
+                            <th>Email</th>
+                            <th>Course</th>
+                            <th>Actions</th>
+                        </tr>
+                    </thead>
+                    <tbody>
+                        {% for student in students %}
+                        <tr>
+                            <td>{{ loop.index }}</td>
+                            <td><span class="badge bg-secondary">{{ student.reg_number }}</span></td>
+                            <td class="fw-bold">{{ student.name }}</td>
+                            <td>{{ student.email or '—' }}</td>
+                            <td><span class="badge bg-info">{{ student.course.code }}</span></td>
+                            <td>
+                                <div class="btn-group btn-group-sm">
+                                    <button class="btn btn-outline-primary" title="Edit"
+                                            data-bs-toggle="modal" data-bs-target="#editStudentModal{{ student.id }}">
+                                        <i class="bi bi-pencil"></i>
+                                    </button>
+                                    <button class="btn btn-outline-danger" title="Delete"
+                                            data-bs-toggle="modal" data-bs-target="#deleteStudentModal{{ student.id }}">
+                                        <i class="bi bi-trash"></i>
+                                    </button>
+                                </div>
+                            </td>
+                        </tr>
+                        {% endfor %}
+                    </tbody>
+                </table>
+            </div>
+            {% else %}
+            <div class="empty-state">
+                <i class="bi bi-people"></i>
+                <h5>No Students Enrolled</h5>
+                <p>Add students and assign them to courses.</p>
+                <button class="btn btn-ibs" data-bs-toggle="modal" data-bs-target="#addStudentModal">
+                    <i class="bi bi-plus-lg"></i> Add Student
+                </button>
+            </div>
+            {% endif %}
+        </div>
+    </div>
+</div>
+
+<!-- Add Student Modal -->
+<div class="modal fade" id="addStudentModal" tabindex="-1">
+    <div class="modal-dialog">
+        <div class="modal-content">
+            <div class="modal-header">
+                <h5 class="modal-title"><i class="bi bi-person-plus me-2"></i>Add New Student</h5>
+                <button type="button" class="btn-close btn-close-white" data-bs-dismiss="modal"></button>
+            </div>
+            <form action="{{ url_for('add_student') }}" method="POST">
+                <div class="modal-body">
+                    <div class="mb-3">
+                        <label class="form-label">Registration Number <span class="text-danger">*</span></label>
+                        <input type="text" name="reg_number" class="form-control" placeholder="e.g. IBS/2024/001" required>
+                    </div>
+                    <div class="mb-3">
+                        <label class="form-label">Full Name <span class="text-danger">*</span></label>
+                        <input type="text" name="name" class="form-control" placeholder="e.g. Jane Doe" required>
+                    </div>
+                    <div class="mb-3">
+                        <label class="form-label">Email</label>
+                        <input type="email" name="email" class="form-control" placeholder="e.g. jane.doe@ibs.ac.tz">
+                    </div>
+                    <div class="mb-3">
+                        <label class="form-label">Course <span class="text-danger">*</span></label>
+                        <select name="course_id" class="form-select" required>
+                            <option value="">-- Select Course --</option>
+                            {% for course in courses %}
+                            <option value="{{ course.id }}">{{ course.code }} - {{ course.name }}</option>
+                            {% endfor %}
+                        </select>
+                    </div>
+                </div>
+                <div class="modal-footer">
+                    <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Cancel</button>
+                    <button type="submit" class="btn btn-ibs"><i class="bi bi-check-lg"></i> Add Student</button>
+                </div>
+            </form>
+        </div>
+    </div>
+</div>
+
+<!-- Edit & Delete Modals -->
+{% for student in students %}
+<div class="modal fade" id="editStudentModal{{ student.id }}" tabindex="-1">
+    <div class="modal-dialog">
+        <div class="modal-content">
+            <div class="modal-header">
+                <h5 class="modal-title"><i class="bi bi-pencil me-2"></i>Edit Student</h5>
+                <button type="button" class="btn-close btn-close-white" data-bs-dismiss="modal"></button>
+            </div>
+            <form action="{{ url_for('edit_student', student_id=student.id) }}" method="POST">
+                <div class="modal-body">
+                    <div class="mb-3">
+                        <label class="form-label">Registration Number</label>
+                        <input type="text" class="form-control" value="{{ student.reg_number }}" disabled>
+                    </div>
+                    <div class="mb-3">
+                        <label class="form-label">Full Name <span class="text-danger">*</span></label>
+                        <input type="text" name="name" class="form-control" value="{{ student.name }}" required>
+                    </div>
+                    <div class="mb-3">
+                        <label class="form-label">Email</label>
+                        <input type="email" name="email" class="form-control" value="{{ student.email or '' }}">
+                    </div>
+                    <div class="mb-3">
+                        <label class="form-label">Course <span class="text-danger">*</span></label>
+                        <select name="course_id" class="form-select" required>
+                            {% for course in courses %}
+                            <option value="{{ course.id }}" {% if student.course_id == course.id %}selected{% endif %}>
+                                {{ course.code }} - {{ course.name }}
+                            </option>
+                            {% endfor %}
+                        </select>
+                    </div>
+                </div>
+                <div class="modal-footer">
+                    <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Cancel</button>
+                    <button type="submit" class="btn btn-ibs"><i class="bi bi-check-lg"></i> Save Changes</button>
+                </div>
+            </form>
+        </div>
+    </div>
+</div>
+
+<div class="modal fade" id="deleteStudentModal{{ student.id }}" tabindex="-1">
+    <div class="modal-dialog modal-sm">
+        <div class="modal-content">
+            <div class="modal-header bg-danger">
+                <h5 class="modal-title"><i class="bi bi-exclamation-triangle me-2"></i>Delete Student</h5>
+                <button type="button" class="btn-close btn-close-white" data-bs-dismiss="modal"></button>
+            </div>
+            <div class="modal-body">
+                <p>Are you sure you want to delete <strong>{{ student.name }}</strong>?</p>
+                <p class="text-danger mb-0"><small>This will also delete all attendance records for this student.</small></p>
+            </div>
+            <div class="modal-footer">
+                <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Cancel</button>
+                <form action="{{ url_for('delete_student', student_id=student.id) }}" method="POST">
+                    <button type="submit" class="btn btn-danger"><i class="bi bi-trash"></i> Delete</button>
+                </form>
+            </div>
+        </div>
+    </div>
+</div>
+{% endfor %}
+{% endblock %}
